@@ -28,7 +28,7 @@ public class EventService {
         RLock lock = redissonClient.getLock("event_lock");
 
         try {
-            if (!lock.tryLock(1, 3, TimeUnit.SECONDS)) {
+            if (!lock.tryLock(2, 3, TimeUnit.SECONDS)) {
                 log.warn("LOCK 획득에 실패하였습니다. [thread: {}]", currentThread);
                 return;
             }
@@ -65,5 +65,18 @@ public class EventService {
 
     public void initEvent(String key, Event event) {
         redissonClient.getBucket(key).set(event);
+    }
+
+    public void joinWithNoLock(String key) {
+        String currentThread = Thread.currentThread().getName();
+
+        Event event = getEvent(key);
+        if (event.getLimit() == event.getCurrent()) {
+            log.info("이벤트 참석이 종료되었습니다. [정보: {}", event);
+            return;
+        }
+
+        doJoin(key, event);
+        log.info("이벤트 참석현황 : 이벤트: {}, thread: {}", event, currentThread);
     }
 }
